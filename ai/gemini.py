@@ -117,3 +117,61 @@ def read_invoice(image_bytes: bytes, mime_type: str) -> dict:
     text = clean_json_text(response.text)
 
     return json.loads(text)
+
+def read_documents(
+    student_image_bytes: bytes,
+    student_mime_type: str,
+    invoice_image_bytes: bytes,
+    invoice_mime_type: str,
+) -> dict:
+    prompt = """
+第一張圖片是學生證正面，第二張圖片是台灣發票。
+
+請辨識以下資料：
+
+學生證：
+- student_id：學號或證號
+- full_name：完整姓名
+- surname：姓氏
+
+發票：
+- invoice_date：民國日期，例如 115.08.06
+- invoice_number：兩個英文字母加八位數字
+- amount：總金額，只保留數字
+- product_model：商品型號
+
+無法確定的欄位請填空字串，不可猜測。
+只輸出 JSON，不要輸出說明或 Markdown。
+
+{
+  "student": {
+    "student_id": "",
+    "full_name": "",
+    "surname": ""
+  },
+  "invoice": {
+    "invoice_date": "",
+    "invoice_number": "",
+    "amount": "",
+    "product_model": ""
+  }
+}
+"""
+
+    response = client.models.generate_content(
+        model=MODEL_NAME,
+        contents=[
+            types.Part.from_bytes(
+                data=student_image_bytes,
+                mime_type=student_mime_type,
+            ),
+            types.Part.from_bytes(
+                data=invoice_image_bytes,
+                mime_type=invoice_mime_type,
+            ),
+            prompt,
+        ],
+    )
+
+    text = clean_json_text(response.text)
+    return json.loads(text)

@@ -22,6 +22,7 @@ def create_word_document(
     phone: str,
     email: str,
     student_card_image_bytes: bytes,
+    student_card_back_image_bytes: bytes,
 ) -> BytesIO:
     """將確認後的資料填入 Word 範本，並回傳可下載的 Word 檔。"""
 
@@ -55,10 +56,25 @@ def create_word_document(
     image_cell.text = ""
 
     image_paragraph = image_cell.paragraphs[0]
-    image_run = image_paragraph.add_run()
 
-    image_stream = BytesIO(student_card_image_bytes)
-    image_run.add_picture(image_stream, width=Inches(6.5))
+    # 插入學生證正面
+    front_run = image_paragraph.add_run()
+    front_stream = BytesIO(student_card_image_bytes)
+    front_run.add_picture(
+        front_stream,
+        width=Inches(3.0),
+    )
+
+    # 正面與背面之間留一點空間
+    image_paragraph.add_run("  ")
+
+    # 插入學生證背面
+    back_run = image_paragraph.add_run()
+    back_stream = BytesIO(student_card_back_image_bytes)
+    back_run.add_picture(
+        back_stream,
+        width=Inches(3.0),
+)
 
     # 將完成的 Word 存入記憶體，方便 Streamlit 直接下載。
     output = BytesIO()

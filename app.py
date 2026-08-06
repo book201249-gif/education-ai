@@ -2,7 +2,7 @@ import re
 
 import streamlit as st
 
-from ai.gemini import read_invoice, read_student_card
+from ai.gemini import read_documents
 from word_writer import create_word_document
 
 st.set_page_config(
@@ -29,32 +29,74 @@ if "invoice_result" not in st.session_state:
 if "student_card_image_bytes" not in st.session_state:
     st.session_state.student_card_image_bytes = None
 
-
+if "student_card_back_image_bytes" not in st.session_state:
+    st.session_state.student_card_back_image_bytes = None
 # -----------------------
 # 上傳圖片
 # -----------------------
 
-student_card = st.file_uploader(
-    "📷 上傳學生證（請先完成隱私遮蔽後再上傳）",
+uploaded_images = st.file_uploader(
+    "📷 一次上傳學生證正面、學生證背面及發票",
     type=["jpg", "jpeg", "png"],
+    accept_multiple_files=True,
 )
 
-st.caption("⚠️ 上傳前，請先遮蔽學生證上的大頭照。")
+st.caption("⚠️ 請先遮蔽學生證正面的大頭照及不必要的個資。")
 
-invoice = st.file_uploader(
-    "🧾 上傳發票",
-    type=["jpg", "jpeg", "png"],
-)
+student_card = None
+student_card_back = None
+invoice = None
 
-col1, col2 = st.columns(2)
+if len(uploaded_images) == 3:
+    student_card = st.selectbox(
+        "選擇學生證正面",
+        uploaded_images,
+        index=0,
+        format_func=lambda file: file.name,
+    )
+
+    student_card_back = st.selectbox(
+        "選擇學生證背面",
+        uploaded_images,
+        index=1,
+        format_func=lambda file: file.name,
+    )
+
+    invoice = st.selectbox(
+        "選擇發票",
+        uploaded_images,
+        index=2,
+        format_func=lambda file: file.name,
+    )
+
+elif uploaded_images:
+    st.warning("請一次選取正面、背面及發票，共 3 張圖片。")
+
+col1, col2, col3 = st.columns(3)
 
 with col1:
     if student_card:
-        st.image(student_card, caption="學生證", use_container_width=True)
+        st.image(
+            student_card,
+            caption="學生證正面",
+            use_container_width=True,
+        )
 
 with col2:
+    if student_card_back:
+        st.image(
+            student_card_back,
+            caption="學生證背面",
+            use_container_width=True,
+        )
+
+with col3:
     if invoice:
-        st.image(invoice, caption="發票", use_container_width=True)
+        st.image(
+            invoice,
+            caption="發票",
+            use_container_width=True,
+        )
 
 
 # -----------------------
@@ -63,28 +105,40 @@ with col2:
 
 if st.button("🤖 開始辨識", type="primary"):
 
-    if student_card is None:
-        st.error("請先上傳學生證")
+    if len(uploaded_images) != 3:
+        st.error("請一次上傳 3 張圖片")
 
-    elif invoice is None:
-        st.error("請先上傳發票")
+    elif len(
+        {
+            student_card.name,
+            student_card_back.name,
+            invoice.name,
+        }
+    ) != 3:
+        st.error("正面、背面及發票不可選擇同一張圖片")
 
     else:
+        with st.spinner("Gemini 正在辨識學生證正面與發票..."):
 
-        with st.spinner("Gemini 正在辨識..."):
-
-            st.session_state.student_result = read_student_card(
+            result = read_documents(
                 student_card.getvalue(),
                 student_card.type,
-            )
-
-            st.session_state.invoice_result = read_invoice(
                 invoice.getvalue(),
                 invoice.type,
             )
 
-            # ★ 改成保存學生證圖片
-            st.session_state.student_card_image_bytes = student_card.getvalue()
+            st.session_state.student_result = result["student"]
+            st.session_state.invoice_result = result["invoice"]
+
+            # 保存正面圖片
+            st.session_state.student_card_image_bytes = (
+                student_card.getvalue()
+            )
+
+            # 保存背面圖片，但不傳給 Gemini
+            st.session_state.student_card_back_image_bytes = (
+                student_card_back.getvalue()
+            )
 
         st.success("辨識完成！")
 
@@ -168,17 +222,20 @@ if (
     if st.button("📄 產生 Word"):
 
         word_file = create_word_document(
-            invoice_date=invoice_date,
-            id_and_surname=id_and_surname,
-            invoice_number=invoice_number,
-            amount=amount,
-            product_model=product_model,
-            phone=phone,
-            email=email,
-
-            # ★ 改成學生證
-            student_card_image_bytes=st.session_state.student_card_image_bytes,
-        )
+                invoice_date=invoice_date,
+                id_and_surname=id_and_surname,
+                invoice_number=invoice_number,
+                amount=amount,
+                product_model=product_model,
+                phone=phone,
+                email=email,
+                student_card_image_bytes=(
+                    st.session_state.student_card_image_bytes
+                ),
+                student_card_back_image_bytes=(
+                    st.session_state.student_card_back_image_bytes
+                ),
+            )
         date_parts = re.findall(r"\d+", invoice_date)
 
         if len(date_parts) == 3:
