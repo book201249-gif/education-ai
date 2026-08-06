@@ -178,12 +178,7 @@ if (
             student_card_image_bytes=st.session_state.student_card_image_bytes,
         )
 
-        filename = (
-            f"{student_id}_{surname}_{invoice_number}"
-            .replace(" ", "_")
-            + ".docx"
-        )
-
+        filename = f"{invoice_number}_{invoice_date}.docx"
         st.download_button(
             "⬇️ 下載 Word",
             data=word_file,
