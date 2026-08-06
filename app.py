@@ -2,7 +2,7 @@ import re
 
 import streamlit as st
 
-from ai.gemini import read_documents
+from ai.gemini import read_invoice, read_student_card
 from word_writer import create_word_document
 
 st.set_page_config(
@@ -120,22 +120,24 @@ if st.button("🤖 開始辨識", type="primary"):
     else:
         with st.spinner("Gemini 正在辨識學生證正面與發票..."):
 
-            result = read_documents(
+                        # 學生證正面獨立辨識
+            st.session_state.student_result = read_student_card(
                 student_card.getvalue(),
                 student_card.type,
+            )
+
+            # 發票獨立辨識
+            st.session_state.invoice_result = read_invoice(
                 invoice.getvalue(),
                 invoice.type,
             )
 
-            st.session_state.student_result = result["student"]
-            st.session_state.invoice_result = result["invoice"]
-
-            # 保存正面圖片
+            # 保存學生證正面
             st.session_state.student_card_image_bytes = (
                 student_card.getvalue()
             )
 
-            # 保存背面圖片，但不傳給 Gemini
+            # 保存學生證背面，但不傳給 Gemini
             st.session_state.student_card_back_image_bytes = (
                 student_card_back.getvalue()
             )
