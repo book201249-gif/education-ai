@@ -35,9 +35,11 @@ if "student_card_image_bytes" not in st.session_state:
 # -----------------------
 
 student_card = st.file_uploader(
-    "📷 上傳學生證",
+    "📷 上傳學生證（請先完成隱私遮蔽後再上傳）",
     type=["jpg", "jpeg", "png"],
 )
+
+st.caption("⚠️ 上傳前，請先遮蔽學生證上的大頭照。")
 
 invoice = st.file_uploader(
     "🧾 上傳發票",
