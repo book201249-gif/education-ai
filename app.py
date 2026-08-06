@@ -179,8 +179,20 @@ if (
             # ★ 改成學生證
             student_card_image_bytes=st.session_state.student_card_image_bytes,
         )
+        date_parts = re.findall(r"\d+", invoice_date)
 
-        filename = f"{invoice_number}_{invoice_date}.docx"
+        if len(date_parts) == 3:
+            year, month, day = map(int, date_parts)
+
+            if year < 1911:
+                year += 1911
+
+            filename_date = f"{year:04d}{month:02d}{day:02d}"
+        else:
+            filename_date = re.sub(r"\D", "", invoice_date)
+
+        filename = f"{invoice_number}_{filename_date}.docx"
+
         st.download_button(
             "⬇️ 下載 Word",
             data=word_file,
